@@ -85,9 +85,9 @@ class Trainer(abc.ABC):
             # ====== YOUR CODE: ======
             EpochRes_train = self.train_epoch(dl_train,**kw)
             EpochRes_test = self.test_epoch(dl_test,**kw)
-            train_loss.append(EpochRes_train[0])
+            train_loss.append(sum(EpochRes_train[0])/len(EpochRes_train[0])) # Calc Average
             train_acc.append(EpochRes_train[1])
-            test_loss.append(EpochRes_test[0])
+            test_loss.append(sum(EpochRes_test[0])/len(EpochRes_train[0]))
             test_acc.append(EpochRes_test[1])
 
 
@@ -100,6 +100,17 @@ class Trainer(abc.ABC):
             #    method on this class to save the model to the file specified by
             #    the checkpoints argument.
             # if best_acc is None or test_result.accuracy > best_acc:
+
+            # Implementation of Early Stopping, not using suggest form:
+            if not (early_stopping is None):
+                if len(test_loss) >1:
+                    if test_loss[-1] <= test_loss[-2]:
+                        epochs_without_improvement += 1
+                        if epochs_without_improvement>= early_stopping:
+                            break
+                    else:
+                        epochs_without_improvement = 0
+
             #     # ====== YOUR CODE: ======
             #     raise NotImplementedError()
             #     # ========================
@@ -264,7 +275,14 @@ class ClassifierTrainer(Trainer):
         #  - Update parameters
         #  - Classify and calculate number of correct predictions
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        y_pred = self.model(X)
+        batch_loss  = self.loss_fn(y_pred,y)
+        self.optimizer.zero_grad()
+        batch_loss.backward()
+        self.optimizer.step()
+        labels_pred = self.model.classify(X)
+        num_correct = torch.count_nonzero(labels_pred == y)
+        batch_loss = batch_loss.item()
         # ========================
 
         return BatchResult(batch_loss, num_correct)
@@ -284,7 +302,14 @@ class ClassifierTrainer(Trainer):
             #  - Forward pass
             #  - Calculate number of correct predictions
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            y_pred = self.model(X)
+            batch_loss = self.loss_fn(y_pred, y)
+            # self.optimizer.zero_grad()
+            # batch_loss.backward()
+            # self.optimizer.step()
+            labels_pred = self.model.classify(X)
+            num_correct = torch.count_nonzero(labels_pred == y)
+            batch_loss = batch_loss.item()
             # ========================
 
         return BatchResult(batch_loss, num_correct)

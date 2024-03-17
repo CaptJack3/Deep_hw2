@@ -29,7 +29,7 @@ NUM_NODES=1
 NUM_CORES=2
 NUM_GPUS=1
 JOB_NAME="test_job"
-MAIL_USER="example@example.com"
+MAIL_USER="yaacov@campus.technion.ac.il"
 MAIL_TYPE=ALL # Valid values are NONE, BEGIN, END, FAIL, REQUEUE, ALL
 
 ###
@@ -56,7 +56,8 @@ source $CONDA_HOME/etc/profile.d/conda.sh
 conda activate $CONDA_ENV
 
 # Run python with the args to the script
-python $@
+
+sbatch -c 2 --gres=gpu:1 --pty python -m hw2.experiments run-exp -n test -K 32 -L 2 -P 2 -H 100 -s 42 -M resnet 
 
 echo "*** SLURM BATCH JOB '$JOB_NAME' DONE ***"
 EOF

@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
@@ -22,7 +23,7 @@ class Classifier(nn.Module, ABC):
 
         # TODO: Add any additional initializations here, if you need them.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        # raise NotImplementedError()
         # ========================
 
     def forward(self, x: Tensor) -> Tensor:
@@ -34,7 +35,7 @@ class Classifier(nn.Module, ABC):
 
         # TODO: Implement the forward pass, returning raw scores from the wrapped model.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        z = self.model(x)
         # ========================
         assert z.shape[0] == x.shape[0] and z.ndim == 2, "raw scores should be (N, C)"
         return z
@@ -47,7 +48,7 @@ class Classifier(nn.Module, ABC):
         """
         # TODO: Calcualtes class scores for each sample.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        z = self.forward(x)
         # ========================
         return self.predict_proba_scores(z)
 
@@ -59,7 +60,9 @@ class Classifier(nn.Module, ABC):
         """
         # TODO: Calculate class probabilities for the input.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        # fc = nn.LogSoftmax(dim=1)
+        fc = nn.Softmax(dim=1)
+        return fc(z)
         # ========================
 
     def classify(self, x: Tensor) -> Tensor:
@@ -69,8 +72,12 @@ class Classifier(nn.Module, ABC):
         """
         # Calculate the class probabilities
         y_proba = self.predict_proba(x)
+        # y_proba_max_ind = torch.argmax(y_proba,dim=1)
+        # print(f"BackTest {type(y_proba_max_ind)}")
+        # y_proba_max_ind = y_proba_max_ind.to(torch.int)
         # Use implementation-specific helper to assign a class based on the
         # probabilities.
+        # return self._classify(y_proba[range(len(y_proba)),y_proba_max_ind])
         return self._classify(y_proba)
 
     def classify_scores(self, z: Tensor) -> Tensor:
@@ -96,7 +103,7 @@ class ArgMaxClassifier(Classifier):
         #  Classify each sample to one of C classes based on the highest score.
         #  Output should be a (N,) integer tensor.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        return torch.argmax(y_proba,dim=1)
         # ========================
 
 
@@ -128,7 +135,9 @@ class BinaryClassifier(Classifier):
         #  greater or equal to the threshold.
         #  Output should be a (N,) integer tensor.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        labels = y_proba[:,self.positive_class] > self.threshold
+        labels = labels.to(torch.int)
+        return labels
         # ========================
 
 
@@ -177,7 +186,17 @@ def plot_decision_boundary_2d(
     #  plot a contour map.
     x1_grid, x2_grid, y_hat = None, None, None
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    x1_min, x1_max = x[:, 0].min() - 1, x[:, 0].max() + 1
+    x2_min, x2_max = x[:, 1].min() - 1, x[:, 1].max() + 1
+    x1_grid, x2_grid = torch.meshgrid(torch.arange(x1_min, x1_max, dx),
+                                      torch.arange(x2_min, x2_max, dx))
+    grid = torch.stack([x1_grid.flatten(),x2_grid.flatten()],dim=1)
+    with torch.no_grad():
+        y_hat = classifier.classify(grid)
+        # print(y_hat.size())
+        # print(x1_grid.size())
+        y_hat = y_hat.reshape(x1_grid.shape)
+
     # ========================
 
     # Plot the decision boundary as a filled contour
@@ -211,7 +230,11 @@ def select_roc_thresh(
     fpr, tpr, thresh = None, None, None
     optimal_theresh_idx, optimal_thresh = None, None
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    y_probs = classifier.predict_proba(x)[:,1]
+    # fpr,tpr,thresh = roc_curve(np.array(y),np.array(y_probs))
+    fpr,tpr,thresh = roc_curve(y.detach().numpy(),y_probs.detach().numpy())
+    optimal_thresh_idx = np.argmax(tpr-fpr)
+    optimal_thresh = thresh[optimal_thresh_idx]
     # ========================
 
     if plot:

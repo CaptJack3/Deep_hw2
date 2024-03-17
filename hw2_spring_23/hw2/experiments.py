@@ -45,7 +45,24 @@ def mlp_experiment(
     #  Note: use print_every=0, verbose=False, plot=False where relevant to prevent
     #  output from this function.
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    # optimal_thresh = select_roc_thresh(model, *dl_valid.dataset.tensors, plot=True) # optimal threshold
+    dims = [width]*depth + [2]
+    nonlins = ["tanh"]*depth + ["none"]
+    MLP_model=MLP(in_dim=2,dims=dims,nonlins=nonlins)
+    model = BinaryClassifier(MLP_model,threshold=0.5)
+    loss_fn = torch.nn.CrossEntropyLoss()
+    params = {"lr": 0.01, "weight_decay": 0.001 , "momentum":0.9 }
+    optimizer = torch.optim.SGD(params=model.parameters(), **params)
+    trainer = ClassifierTrainer(model, loss_fn, optimizer)
+    fit_result = trainer.fit(dl_train, dl_valid, num_epochs=n_epochs, print_every=1)
+    thresh = select_roc_thresh(model, *dl_valid.dataset.tensors, plot=True)  # optimal threshold
+    model.threshold=thresh
+    trainer = ClassifierTrainer(model, loss_fn, optimizer)
+    fit_after_th =   trainer.fit(dl_train, dl_valid, num_epochs=n_epochs, print_every=1)
+    valid_acc = fit_after_th.test_acc[-1]
+
+    test_res = trainer.test_epoch(dl_test,verbose=False)
+    test_acc = test_res[1]
     # ========================
     return model, thresh, valid_acc, test_acc
 
@@ -107,7 +124,56 @@ def cnn_experiment(
     #   for you automatically.
     fit_res = None
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    in_size = 3,32,32 # Hard-Coded for specific task
+    channel_list=[]
+    dl_train =DataLoader(ds_train,bs_train)
+    dl_test = DataLoader(ds_test,bs_test)
+    out_classes = 10
+    params = dict()
+
+    ''' Channels Defenitions '''
+    for i in filters_per_layer:
+        channel_list += [i] * layers_per_block
+
+    ''' Define The Net'''
+    # if conv_params is None:
+    #     conv_params = {"kernel_size": 3 ,"padding" : 1}
+    conv_params={"kernel_size": 3 ,"padding" : 1}
+    activation_type="relu"
+    # activation_params,
+    pooling_type="avg"
+    pooling_params={"kernel_size":2}
+    if model_type=="cnn":
+        model = model_cls(
+        in_size,
+        out_classes =out_classes,
+        channels = channel_list,
+        pool_every=pool_every,
+        hidden_dims=hidden_dims,
+        conv_params=conv_params,
+        activation_type=activation_type,
+        pooling_type=pooling_type,
+        pooling_params=pooling_params
+        )
+    if model_type=="resnet":
+        model = model_cls(
+            in_size=in_size,
+            out_classes=out_classes,
+            channels=channel_list,
+            pool_every=pool_every,
+            hidden_dims=hidden_dims,
+            conv_params=conv_params,
+            activation_type=activation_type,
+            pooling_type=pooling_type,
+            pooling_params=pooling_params
+            )
+    ''' Classifier '''
+    classifier = ArgMaxClassifier(model)
+    optimizer = torch.optim.Adam(params = model.parameters() ,lr=lr,weight_decay=reg)
+    loss_fn =torch.nn.CrossEntropyLoss()
+    trainer = ClassifierTrainer(classifier,loss_fn,optimizer,device)
+    fit_res = trainer.fit(dl_train,dl_test,epochs, print_every=1,early_stopping=early_stopping,checkpoints=checkpoints)
+
     # ========================
 
     save_experiment(run_name, out_dir, cfg, fit_res)
