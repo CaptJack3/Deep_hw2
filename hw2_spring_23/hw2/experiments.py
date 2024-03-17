@@ -168,7 +168,7 @@ def cnn_experiment(
             pooling_params=pooling_params
             )
     ''' Classifier '''
-    classifier = ArgMaxClassifier(model)
+    classifier = ArgMaxClassifier(model).to(device)
     optimizer = torch.optim.Adam(params = model.parameters() ,lr=lr,weight_decay=reg)
     loss_fn =torch.nn.CrossEntropyLoss()
     trainer = ClassifierTrainer(classifier,loss_fn,optimizer,device)
